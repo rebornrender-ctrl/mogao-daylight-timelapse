@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark" />
+    <title>敦煌光迹 · 互动洞窟</title>
+    <script src="/player.js"></script>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        background: #0a0a0a;
+        color: #d8c7a8;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      body {
+        display: grid;
+        place-items: center;
+        padding: 24px;
+      }
+
+      .player-wrap {
+        width: min(1280px, 100%);
+        aspect-ratio: 16 / 9;
+        overflow: hidden;
+        background: #100d09;
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+      }
+
+      hyperframes-player {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+
+      .hint {
+        position: fixed;
+        left: 24px;
+        bottom: 18px;
+        color: rgba(216, 199, 168, 0.62);
+        font: 11px/1.4 ui-monospace, SFMono-Regular, Consolas, monospace;
+        letter-spacing: 0.08em;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="player-wrap" aria-label="敦煌光迹互动三维预览">
+      <hyperframes-player
+        id="interactive-player"
+        interactive
+        src="/composition/index.html"
+        muted
+      ></hyperframes-player>
+    </main>
+    <div class="hint">拖动旋转 · 滚轮缩放 · 双击/R 复位 · 光流按钮控制白昼尘粒与丁达尔光锥</div>
+    <script>
+      const player = document.getElementById("interactive-player");
+      player.setAttribute("interactive", "");
+      player.removeAttribute("controls");
+    </script>
+  </body>
+</html>

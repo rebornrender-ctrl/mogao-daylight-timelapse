@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1920, height=1080">
+    <meta name="color-scheme" content="dark">
+    <title>敦煌光迹 · 白昼光流</title>
+    <script src="./vendor/gsap.min.js"></script>
+    <script src="./vendor/suncalc.js"></script>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        background: #100d09;
+        color: #d8c7a8;
+        font-family: sans-serif;
+      }
+
+      body {
+        font-variant-numeric: tabular-nums;
+      }
+
+      button,
+      input,
+      select {
+        font: inherit;
+      }
+
+      #root {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #100d09;
+      }
+
+      .clip,
+      #scene-layer {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+      }
+
+      #three-canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+        outline: none;
+        cursor: grab;
+        touch-action: none;
+        user-select: none;
+      }
+
+      #three-canvas.is-dragging {
+        cursor: grabbing;
+      }
+
+      #vignette,
+      #edge-grade,
+      #control-shade {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+
+      #vignette {
+        background:
+          radial-gradient(ellipse at 54% 45%, transparent 38%, rgba(7, 5, 4, 0.18) 72%, rgba(5, 4, 3, 0.62) 118%),
+          radial-gradient(circle at 80% 13%, rgba(69, 94, 107, 0.08), transparent 34%);
+        mix-blend-mode: multiply;
+      }
+
+      #edge-grade {
+        box-shadow:
+          inset 0 0 0 1px rgba(231, 205, 157, 0.05),
+          inset 0 -110px 150px rgba(8, 6, 5, 0.16);
+      }
+
+      #control-shade {
+        bottom: auto;
+        height: 180px;
+        background: linear-gradient(to bottom, rgba(8, 7, 6, 0.38), transparent);
+        opacity: 0.72;
+      }
+
+      .hud {
+        position: absolute;
+        z-index: 4;
+        color: rgba(235, 218, 185, 0.88);
+        text-shadow: 0 1px 8px rgba(0, 0, 0, 0.65);
+        pointer-events: none;
+      }
+
+      #time-readout {
+        top: 28px;
+        left: 30px;
+        display: flex;
+        align-items: baseline;
+        gap: 14px;
+      }
+
+      #time-value {
+        font-family: monospace;
+        font-size: 26px;
+        font-weight: 400;
+        letter-spacing: 0.04em;
+      }
+
+      #date-value {
+        font-family: monospace;
+        font-size: 12px;
+        letter-spacing: 0.12em;
+        color: rgba(230, 215, 186, 0.82);
+      }
+
+      #source-readout {
+        top: 28px;
+        right: 30px;
+        display: grid;
+        grid-template-columns: auto auto;
+        column-gap: 12px;
+        align-items: baseline;
+        font-family: monospace;
+        font-size: 12px;
+        letter-spacing: 0.1em;
+        text-align: right;
+      }
+
+      #source-value {
+        color: rgba(244, 211, 149, 0.96);
+        font-size: 15px;
+      }
+
+      #source-readout span {
+        color: rgb(170, 158, 136);
+      }
+
+      #altitude-value,
+      #illumination-value,
+      #aperture-value {
+        color: rgb(170, 158, 136);
+      }
+
+      #aperture-value {
+        grid-column: 1 / -1;
+        margin-top: 7px;
+        color: rgba(184, 171, 146, 0.96);
+      }
+
+      #interaction-badge {
+        position: absolute;
+        z-index: 5;
+        top: 86px;
+        left: 30px;
+        padding: 5px 8px;
+        border: 1px solid rgba(216, 199, 168, 0.14);
+        color: #aa9d86;
+        background: rgba(16, 13, 9, 0.72);
+        font-family: monospace;
+        font-size: 9px;
+        letter-spacing: 0.14em;
+        pointer-events: none;
+      }
+
+      #interaction-hint {
+        position: absolute;
+        z-index: 5;
+        left: 30px;
+        bottom: 122px;
+        color: rgb(190, 175, 150);
+        font-family: monospace;
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        text-shadow: 0 1px 8px rgba(0, 0, 0, 0.72);
+        pointer-events: none;
+      }
+
+      #controls,
+      #controls * {
+        pointer-events: auto;
+      }
+
+      #controls {
+        position: absolute;
+        z-index: 6;
+        left: 50%;
+        bottom: 26px;
+        width: min(1180px, calc(100% - 64px));
+        min-height: 82px;
+        transform: translateX(-50%);
+        display: grid;
+        grid-template-columns: 94px minmax(300px, 1fr) 170px 126px 164px;
+        align-items: center;
+        gap: 18px;
+        padding: 14px 16px 14px 14px;
+        border: 1px solid rgba(216, 199, 168, 0.17);
+        background: rgba(18, 14, 11, 0.72);
+        box-shadow: 0 16px 50px rgba(0, 0, 0, 0.2);
+        backdrop-filter: blur(10px);
+      }
+
+      .control-button,
+      .control-select,
+      .control-date {
+        height: 42px;
+        border: 1px solid rgba(216, 199, 168, 0.22);
+        border-radius: 0;
+        color: #e3d0ad;
+        background: rgba(54, 41, 29, 0.38);
+        outline: none;
+      }
+
+      .control-button {
+        cursor: pointer;
+        font-size: 13px;
+        letter-spacing: 0.12em;
+      }
+
+      .control-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      .control-actions .control-button {
+        min-width: 0;
+        padding: 0 8px;
+        font-size: 10px;
+        letter-spacing: 0.08em;
+      }
+
+      .control-button:hover,
+      .control-button:focus-visible {
+        border-color: rgba(242, 199, 130, 0.62);
+        color: #f2c782;
+        background: rgba(104, 73, 45, 0.28);
+      }
+
+      .control-date,
+      .control-select {
+        width: 100%;
+        padding: 0 12px;
+        font-family: monospace;
+        font-size: 11px;
+        letter-spacing: 0.06em;
+      }
+
+      .control-date::-webkit-calendar-picker-indicator {
+        opacity: 0.5;
+        filter: sepia(0.4) saturate(0.7);
+      }
+
+      .timeline-wrap {
+        position: relative;
+        display: grid;
+        align-content: center;
+        gap: 9px;
+        min-width: 0;
+      }
+
+      .timeline-meta {
+        display: flex;
+        justify-content: space-between;
+        color: rgb(170, 158, 136);
+        font-family: monospace;
+        font-size: 9px;
+        letter-spacing: 0.12em;
+      }
+
+      #timeline-progress {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 8px;
+        height: 1px;
+        pointer-events: none;
+        background: linear-gradient(90deg, rgba(242, 199, 130, 0.82), rgba(204, 166, 111, 0.78), rgba(157, 105, 73, 0.76));
+        transform-origin: 0 50%;
+        will-change: transform;
+      }
+
+      #time-slider {
+        width: 100%;
+        height: 18px;
+        margin: 0;
+        appearance: none;
+        background: transparent;
+        cursor: ew-resize;
+      }
+
+      #time-slider::-webkit-slider-runnable-track {
+        height: 2px;
+        background:
+          linear-gradient(90deg, rgba(241, 197, 120, 0.72), rgba(190, 157, 111, 0.62) 66%, rgba(157, 105, 73, 0.72));
+      }
+
+      #time-slider::-webkit-slider-thumb {
+        width: 11px;
+        height: 11px;
+        margin-top: -4.5px;
+        appearance: none;
+        border: 2px solid #17120e;
+        border-radius: 50%;
+        background: #f2c782;
+        box-shadow: 0 0 0 4px rgba(242, 199, 130, 0.12);
+      }
+
+      #time-slider::-moz-range-track {
+        height: 2px;
+        border: 0;
+        background: linear-gradient(90deg, rgba(241, 197, 120, 0.72), rgba(190, 157, 111, 0.62) 66%, rgba(157, 105, 73, 0.72));
+      }
+
+      #time-slider::-moz-range-thumb {
+        width: 9px;
+        height: 9px;
+        border: 2px solid #17120e;
+        border-radius: 50%;
+        background: #f2c782;
+      }
+
+      .control-label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+      }
+
+      @media (max-width: 900px) {
+        #controls {
+          grid-template-columns: 78px 1fr 148px 150px;
+          width: calc(100% - 28px);
+        }
+
+        .control-speed-wrap {
+          display: none;
+        }
+
+        #interaction-hint {
+          bottom: 138px;
+          left: 18px;
+          font-size: 9px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div data-hf-id="hf-nh7l" id="root" data-composition-id="main" data-start="0" data-duration="120" data-width="1920" data-height="1080">
+      <div data-hf-id="hf-72af" id="scene-layer">
+        <canvas data-hf-id="hf-zwsr" id="three-canvas" tabindex="0" aria-label="敦煌莫高窟第 328 窟唐代侍立菩萨三维场景。拖动旋转视角，滚轮缩放，双击复位。" role="img"></canvas>
+        <div data-hf-id="hf-8lic" id="control-shade"></div>
+        <div data-hf-id="hf-h7i3" id="vignette"></div>
+        <div data-hf-id="hf-cgng" id="edge-grade"></div>
+
+        <div data-hf-id="hf-dnuz" id="time-readout" class="hud" aria-live="polite">
+          <span data-hf-id="hf-rh5c" id="time-value">07:30</span>
+          <span data-hf-id="hf-wofb" id="date-value">2026.09.24</span>
+        </div>
+
+        <div data-hf-id="hf-81nj" id="source-readout" class="hud" aria-live="polite">
+          <span data-hf-id="hf-gn24" id="source-value">晨光</span>
+          <span data-hf-id="hf-w8r1" id="altitude-value">太阳 —</span>
+          <span data-hf-id="hf-ct62" id="illumination-value">日照 0%</span>
+          <span data-hf-id="hf-mpml" id="aperture-value">日光未穿入</span>
+        </div>
+
+        <div data-hf-id="hf-thxd" id="interaction-badge">CAVE 328 / TANG SCAN / CC BY · PD C217 REF</div>
+        <div data-hf-id="hf-interaction-hint" id="interaction-hint">拖动旋转 · 滚轮缩放 · 双击复位</div>
+
+        <div data-hf-id="hf-00yd" id="controls" aria-label="时间与日期控制">
+          <button data-hf-id="hf-pwu3" id="play-button" class="control-button" type="button" aria-label="播放 120 秒白昼光流">播放</button>
+
+          <div data-hf-id="hf-g50q" class="timeline-wrap">
+            <div data-hf-id="hf-d5zp" class="timeline-meta"><span data-hf-id="hf-kdx7">DAWN</span><span data-hf-id="hf-k5mh">DAY</span><span data-hf-id="hf-dm7o">DUSK</span></div>
+            <label data-hf-id="hf-gq15" class="control-label" for="time-slider">场景时间</label>
+            <input data-hf-id="hf-l16q" id="time-slider" type="range" min="0" max="120" step="0.01" value="0">
+            <div data-hf-id="hf-c4xj" id="timeline-progress" data-layout-ignore=""></div>
+          </div>
+
+          <div data-hf-id="hf-yeow">
+            <label data-hf-id="hf-y77y" class="control-label" for="date-input">日期</label>
+            <input data-hf-id="hf-z9be" id="date-input" class="control-date" type="date" value="2026-09-24">
+          </div>
+
+          <div data-hf-id="hf-x19m" class="control-speed-wrap">
+            <label data-hf-id="hf-8ard" class="control-label" for="speed-select">播放速度</label>
+            <select data-hf-id="hf-pqyx" id="speed-select" class="control-select">
+              <option data-hf-id="hf-n3sy" value="0.5">0.5×</option>
+              <option data-hf-id="hf-2jmk" value="1" selected>1×</option>
+              <option data-hf-id="hf-g6x2" value="4">4×</option>
+              <option data-hf-id="hf-74ro" value="12">12×</option>
+            </select>
+          </div>
+
+          <div data-hf-id="hf-view-actions" class="control-actions">
+            <button data-hf-id="hf-flow-toggle" id="flow-toggle" class="control-button" type="button" aria-pressed="false">光流 OFF</button>
+            <button data-hf-id="hf-reset-view" id="reset-view" class="control-button" type="button">复位视角</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script>
+      window.__timelines = window.__timelines || {};
+      const mainTimeline = gsap.timeline({ paused: true });
+      mainTimeline.fromTo(
+        "#timeline-progress",
+        { scaleX: 0.001 },
+        { scaleX: 1, duration: 120, ease: "none" },
+        0,
+      );
+      window.__timelines.main = mainTimeline;
+    </script>
+    <script type="module" src="./scene.js"></script>
+  </body>
+</html>

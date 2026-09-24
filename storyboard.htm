@@ -1,0 +1,643 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>敦煌光迹 · 光线分镜 v1</title>
+    <style>
+      :root {
+        --ink: #100d09;
+        --ink-2: #18130e;
+        --sand: #9a744c;
+        --sand-light: #c7a06c;
+        --lapis: #355878;
+        --green: #4d6b5d;
+        --cinnabar: #a45a3c;
+        --sun: #f2c782;
+        --moon: #a8c6ee;
+        --paper: #d8c7a8;
+        --muted: #9b8d78;
+        --line: rgba(216, 199, 168, 0.18);
+      }
+
+      * { box-sizing: border-box; }
+
+      html { background: var(--ink); }
+
+      body {
+        margin: 0;
+        color: var(--paper);
+        background:
+          radial-gradient(circle at 18% 0%, rgba(90, 67, 42, 0.18), transparent 34rem),
+          radial-gradient(circle at 85% 30%, rgba(42, 69, 87, 0.12), transparent 30rem),
+          var(--ink);
+        font-family: system-ui, sans-serif;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .defs {
+        position: absolute;
+        width: 0;
+        height: 0;
+        overflow: hidden;
+      }
+
+      main {
+        width: min(1540px, calc(100% - 48px));
+        margin: 0 auto;
+        padding: 56px 0 72px;
+      }
+
+      header {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 28px;
+        align-items: end;
+        padding: 0 4px 28px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .eyebrow {
+        margin: 0 0 12px;
+        color: var(--sand-light);
+        font-size: 12px;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 0;
+        font-family: system-ui, sans-serif;
+        font-size: clamp(34px, 4.2vw, 64px);
+        font-weight: 500;
+        letter-spacing: 0.04em;
+      }
+
+      .dek {
+        max-width: 900px;
+        margin: 14px 0 0;
+        color: #bbae96;
+        font-size: 15px;
+        line-height: 1.7;
+      }
+
+      .meta {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 8px;
+      }
+
+      .tag {
+        padding: 8px 12px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        color: #c8b99e;
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        white-space: nowrap;
+        background: rgba(24, 19, 14, 0.72);
+      }
+
+      .spine {
+        display: grid;
+        grid-template-columns: 180px 1fr;
+        gap: 20px;
+        margin: 24px 0 34px;
+        padding: 18px 20px;
+        border: 1px solid var(--line);
+        background: rgba(24, 19, 14, 0.58);
+      }
+
+      .spine strong {
+        color: var(--sand-light);
+        font-size: 12px;
+        letter-spacing: 0.14em;
+      }
+
+      .spine p {
+        margin: 0;
+        color: #b8aa92;
+        font-size: 14px;
+        line-height: 1.65;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 24px;
+      }
+
+      .cell {
+        min-width: 0;
+        overflow: hidden;
+        border: 1px solid var(--line);
+        background: rgba(24, 19, 14, 0.86);
+        box-shadow: 0 18px 55px rgba(0, 0, 0, 0.18);
+      }
+
+      .visual {
+        position: relative;
+        aspect-ratio: 16 / 9;
+        overflow: hidden;
+        background: var(--ink);
+        border-bottom: 1px solid var(--line);
+      }
+
+      .visual svg {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+
+      .hud-time,
+      .hud-source,
+      .hud-aperture {
+        font-family: monospace;
+        paint-order: stroke;
+        stroke: rgba(16, 13, 9, 0.72);
+        stroke-width: 5px;
+        stroke-linejoin: round;
+      }
+
+      .hud-time { fill: #ead9bb; font-size: 18px; }
+      .hud-source { fill: #cdbb9e; font-size: 13px; letter-spacing: 1px; }
+      .hud-aperture { fill: #9b8d78; font-size: 12px; letter-spacing: 1px; }
+
+      .timeline {
+        position: absolute;
+        left: 28px;
+        right: 28px;
+        bottom: 18px;
+        height: 2px;
+        background: rgba(216, 199, 168, 0.18);
+      }
+
+      .timeline .played {
+        height: 100%;
+        background: linear-gradient(90deg, rgba(242, 199, 130, 0.45), var(--sand-light));
+      }
+
+      .timeline .knob {
+        position: absolute;
+        top: 50%;
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        background: var(--sand-light);
+        box-shadow: 0 0 0 4px rgba(242, 199, 130, 0.12);
+      }
+
+      .frame-label {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 15px 17px 12px;
+        color: #cbbb9e;
+        font-family: monospace;
+        font-size: 11px;
+        letter-spacing: 0.08em;
+      }
+
+      .frame-label strong {
+        color: var(--paper);
+        font-family: system-ui, sans-serif;
+        font-size: 13px;
+        font-weight: 500;
+        letter-spacing: 0.04em;
+      }
+
+      .note {
+        min-height: 86px;
+        margin: 0;
+        padding: 0 17px 15px;
+        color: #9f927d;
+        font-size: 12px;
+        line-height: 1.6;
+      }
+
+      .note b { color: var(--sand-light); font-weight: 500; }
+
+      .seam {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        margin: 0 17px 17px;
+        padding: 5px 8px;
+        border: 1px solid rgba(164, 90, 60, 0.38);
+        color: #c98c6c;
+        font-family: monospace;
+        font-size: 10px;
+        letter-spacing: 0.08em;
+      }
+
+      .seam::before {
+        content: "";
+        width: 18px;
+        height: 1px;
+        background: currentColor;
+      }
+
+      .seam-map {
+        display: grid;
+        place-content: center;
+        min-height: 100%;
+        padding: 36px;
+        background:
+          radial-gradient(circle at 50% 50%, rgba(164, 90, 60, 0.12), transparent 52%),
+          var(--ink-2);
+      }
+
+      .seam-title {
+        margin: 0 0 28px;
+        color: #bfae92;
+        font-family: monospace;
+        font-size: 11px;
+        letter-spacing: 0.15em;
+        text-align: center;
+      }
+
+      .strip {
+        position: relative;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        align-items: center;
+        gap: 0;
+        min-width: 420px;
+      }
+
+      .strip::before {
+        content: "";
+        position: absolute;
+        left: 10%;
+        right: 10%;
+        top: 50%;
+        height: 1px;
+        background: linear-gradient(90deg, var(--sun), #9aaeb7 52%, var(--moon));
+      }
+
+      .node {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        justify-items: center;
+        gap: 10px;
+        color: #8e816e;
+        font-family: monospace;
+        font-size: 9px;
+        letter-spacing: 0.08em;
+      }
+
+      .dot {
+        width: 14px;
+        height: 14px;
+        border: 2px solid var(--ink-2);
+        border-radius: 50%;
+        background: var(--sand-light);
+        box-shadow: 0 0 0 1px rgba(216, 199, 168, 0.22);
+      }
+
+      .node:nth-child(3) .dot { background: #879eaa; }
+      .node:nth-child(4) .dot { background: var(--moon); }
+
+      .seam-note {
+        max-width: 430px;
+        margin: 34px auto 0;
+        color: #8f826e;
+        font-size: 11px;
+        line-height: 1.7;
+        text-align: center;
+      }
+
+      .tokens {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 18px;
+        padding: 28px;
+        background: var(--ink-2);
+      }
+
+      .swatches {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+      }
+
+      .swatch {
+        aspect-ratio: 1;
+        min-height: 54px;
+        display: flex;
+        align-items: end;
+        padding: 7px;
+        border: 1px solid rgba(255,255,255,0.05);
+        color: rgba(255,255,255,0.76);
+        font-family: monospace;
+        font-size: 8px;
+      }
+
+      .token-title {
+        margin: 0 0 11px;
+        color: #9d8f79;
+        font-family: monospace;
+        font-size: 9px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      .type-sample {
+        color: var(--paper);
+        font-size: 22px;
+        line-height: 1.35;
+      }
+
+      .type-sample small {
+        display: block;
+        margin-top: 8px;
+        color: #81745f;
+        font-family: monospace;
+        font-size: 9px;
+        letter-spacing: 0.08em;
+      }
+
+      .ban-list {
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        padding-top: 16px;
+        border-top: 1px solid var(--line);
+        color: #8f816c;
+        font-size: 10px;
+        line-height: 1.45;
+      }
+
+      .ban-list strong { display: block; color: #bd8b6c; font-weight: 500; }
+
+      footer {
+        display: flex;
+        justify-content: space-between;
+        gap: 24px;
+        margin-top: 26px;
+        padding-top: 18px;
+        border-top: 1px solid var(--line);
+        color: #756a5a;
+        font-size: 11px;
+        line-height: 1.6;
+      }
+
+      @media (max-width: 1050px) {
+        .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      }
+
+      @media (max-width: 700px) {
+        main { width: min(100% - 24px, 1540px); padding-top: 28px; }
+        header, .spine { grid-template-columns: 1fr; }
+        .meta { justify-content: flex-start; }
+        .grid { grid-template-columns: 1fr; }
+        .spine { gap: 8px; }
+        footer { flex-direction: column; }
+      }
+    </style>
+  </head>
+  <body>
+    <svg class="defs" aria-hidden="true">
+      <defs>
+        <symbol id="cave328-bodhisattva" viewBox="0 0 400 500">
+          <path d="M92 500 C103 402 144 345 202 337 C266 345 307 402 321 500 Z" fill="#8e7354" />
+          <path d="M111 500 C123 419 153 374 203 365 C259 374 288 419 301 500 Z" fill="#a98b65" opacity="0.82" />
+          <ellipse cx="203" cy="214" rx="101" ry="132" fill="#b0926b" />
+          <path d="M109 180 C116 111 151 69 203 64 C258 69 291 114 297 181 C266 148 242 132 204 128 C166 132 140 149 109 180Z" fill="#5d5141" />
+          <ellipse cx="203" cy="75" rx="43" ry="39" fill="#6a5b49" />
+          <ellipse cx="203" cy="69" rx="23" ry="22" fill="#8b7459" />
+          <ellipse cx="106" cy="225" rx="28" ry="61" fill="#987a5c" />
+          <ellipse cx="300" cy="225" rx="28" ry="61" fill="#987a5c" />
+          <path d="M148 204 Q167 193 187 204" fill="none" stroke="#67523e" stroke-width="6" stroke-linecap="round" />
+          <path d="M219 204 Q239 193 258 204" fill="none" stroke="#67523e" stroke-width="6" stroke-linecap="round" />
+          <path d="M150 219 Q168 225 187 218" fill="none" stroke="#5d4a39" stroke-width="4" stroke-linecap="round" />
+          <path d="M219 218 Q238 225 256 219" fill="none" stroke="#5d4a39" stroke-width="4" stroke-linecap="round" />
+          <path d="M203 216 C198 243 194 263 202 269 C208 272 215 270 219 266" fill="none" stroke="#765c44" stroke-width="5" stroke-linecap="round" />
+          <path d="M176 291 Q203 300 230 291" fill="none" stroke="#74553f" stroke-width="5" stroke-linecap="round" />
+          <path d="M146 148 C164 127 183 121 203 121 C223 121 243 128 261 149" fill="none" stroke="#80684d" stroke-width="8" opacity="0.5" />
+          <path d="M155 313 C176 328 225 330 251 312" fill="none" stroke="#8f6f51" stroke-width="5" opacity="0.42" />
+        </symbol>
+        <filter id="soft-blur" x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur stdDeviation="18" />
+        </filter>
+        <filter id="small-blur" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="5" />
+        </filter>
+      </defs>
+    </svg>
+
+    <main data-composition-id="storyboard" data-width="1540" data-height="900" data-start="0" data-duration="1">
+      <header>
+        <div>
+          <p class="eyebrow">Mogao Light Study · Storyboard v1</p>
+          <h1>敦煌光迹</h1>
+          <p class="dek">同一个真实太阳方向贯穿两分钟白昼：孔洞、石壁、菩萨面部、柔和光雾与尘粒始终服从同一套光线关系。</p>
+        </div>
+        <div class="meta">
+          <span class="tag">1920 × 1080</span>
+          <span class="tag">120 秒 / 白昼</span>
+          <span class="tag">4 光线段落</span>
+          <span class="tag">Silent</span>
+        </div>
+      </header>
+
+      <section class="spine">
+        <strong>SPINE / 光线脊柱</strong>
+        <p>不是四个独立场景，而是一条连续的空间与时间线。首尾的负空间、光轴和洞窟尺度一致，镜头仅做小于 1% 的呼吸式漂移。</p>
+      </section>
+
+      <section class="grid">
+        <article class="cell" id="frame-01">
+          <div class="visual">
+            <svg viewBox="0 0 960 540" role="img" aria-label="拂晓微光构图草图">
+              <defs>
+                <linearGradient id="f1-bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#15110d"/><stop offset="1" stop-color="#33271d"/></linearGradient>
+                <linearGradient id="f1-beam" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f1d7a1" stop-opacity="0"/><stop offset="0.45" stop-color="#f1d7a1" stop-opacity="0.5"/><stop offset="1" stop-color="#e7b96f" stop-opacity="0.08"/></linearGradient>
+                <radialGradient id="f1-spot"><stop stop-color="#f7d59c" stop-opacity="0.76"/><stop offset="1" stop-color="#e5ad62" stop-opacity="0"/></radialGradient>
+                <clipPath id="f1-face"><use href="#cave328-bodhisattva" x="420" y="20" width="430" height="520"/></clipPath>
+              </defs>
+              <rect width="960" height="540" fill="url(#f1-bg)"/>
+              <path d="M0 0H960V83C826 69 731 96 612 77C466 53 314 78 0 55Z" fill="#0b0907"/>
+              <path d="M0 94 C140 121 214 84 350 111 C490 139 634 96 960 121V0H0Z" fill="#423326" opacity="0.72"/>
+              <path d="M0 185 C195 153 260 202 408 173 C582 139 714 196 960 154V540H0Z" fill="#2a2119" opacity="0.8"/>
+              <path d="M0 246 C161 214 240 250 360 232 C555 205 699 252 960 214V358 C717 395 516 346 330 381 C186 408 94 365 0 394Z" fill="#4d3d2b" opacity="0.38"/>
+              <path d="M0 263 C134 246 205 280 334 267 C493 250 652 287 960 251" fill="none" stroke="#49665a" stroke-width="18" opacity="0.22"/>
+              <path d="M0 306 C170 278 263 319 402 300 C558 279 713 323 960 289" fill="none" stroke="#375875" stroke-width="13" opacity="0.2"/>
+              <use href="#cave328-bodhisattva" x="420" y="20" width="430" height="520"/>
+              <path d="M349 51 L403 49 L696 376 L610 396 Z" fill="url(#f1-beam)" filter="url(#soft-blur)"/>
+              <ellipse cx="682" cy="235" rx="78" ry="115" fill="url(#f1-spot)" opacity="0.78" clip-path="url(#f1-face)"/>
+              <g fill="#f2d6a4" opacity="0.55">
+                <circle cx="495" cy="143" r="1.7"/><circle cx="543" cy="184" r="1.2"/><circle cx="594" cy="154" r="2"/><circle cx="625" cy="219" r="1.3"/><circle cx="654" cy="267" r="1.6"/><circle cx="577" cy="305" r="1.1"/><circle cx="711" cy="178" r="1.2"/><circle cx="466" cy="252" r="1.4"/><circle cx="522" cy="332" r="1.1"/><circle cx="734" cy="295" r="1.7"/>
+              </g>
+              <path d="M0 471 C131 442 222 472 341 455 C468 437 565 465 675 450 C775 436 858 453 960 435V540H0Z" fill="#0d0b09"/>
+              <text class="hud-time" x="30" y="39">07:30 · 敦煌</text>
+              <text class="hud-source" x="744" y="38">SUN −0.9°</text>
+              <text class="hud-aperture" x="336" y="52">孔 A / 07:30</text>
+              <div class="timeline"><div class="played" style="width:25%"></div><i class="knob" style="left:25%"></i></div>
+            </svg>
+          </div>
+          <div class="frame-label"><strong>01 · 晨光初入</strong><span>frame-01 · 00:00–00:20</span></div>
+          <p class="note"><b>先动：</b>尘粒先被窄光显形，随后暖金光斑抵达眉骨。镜头缓慢推近，但洞窟负空间保持不变。</p>
+          <span class="seam">连续光轴</span>
+        </article>
+
+        <article class="cell" id="frame-02">
+          <div class="visual">
+            <svg viewBox="0 0 960 540" role="img" aria-label="白昼斜照构图草图">
+              <defs>
+                <linearGradient id="f2-bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#1c160f"/><stop offset="1" stop-color="#5b4028"/></linearGradient>
+                <linearGradient id="f2-beam" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffe2a7" stop-opacity="0.02"/><stop offset="0.5" stop-color="#ffe2a7" stop-opacity="0.68"/><stop offset="1" stop-color="#d8934f" stop-opacity="0.06"/></linearGradient>
+                <radialGradient id="f2-spot"><stop stop-color="#ffe3aa" stop-opacity="0.95"/><stop offset="0.58" stop-color="#e8aa61" stop-opacity="0.35"/><stop offset="1" stop-color="#b8693d" stop-opacity="0"/></radialGradient>
+                <clipPath id="f2-face"><use href="#cave328-bodhisattva" x="418" y="10" width="440" height="535"/></clipPath>
+              </defs>
+              <rect width="960" height="540" fill="url(#f2-bg)"/>
+              <path d="M0 0H960V76C815 93 684 57 535 83C379 109 224 65 0 82Z" fill="#0b0907"/>
+              <path d="M0 92 C151 114 257 72 392 108C531 145 711 79 960 113V0H0Z" fill="#4d3a27" opacity="0.76"/>
+              <path d="M0 172 C169 151 256 196 407 168C570 138 745 200 960 161V540H0Z" fill="#2e251b"/>
+              <path d="M0 244 C181 212 265 254 415 230C587 203 720 261 960 220V344C725 379 536 336 344 375C186 406 91 363 0 397Z" fill="#624c32" opacity="0.38"/>
+              <path d="M0 257 C148 235 231 277 366 252C524 223 681 282 960 242" fill="none" stroke="#5c806d" stroke-width="22" opacity="0.25"/>
+              <path d="M0 306 C159 280 270 320 414 294C578 264 741 326 960 286" fill="none" stroke="#3a5f83" stroke-width="14" opacity="0.24"/>
+              <path d="M0 337 C156 307 286 347 437 323C611 295 761 352 960 316" fill="none" stroke="#9f563b" stroke-width="10" opacity="0.18"/>
+              <use href="#cave328-bodhisattva" x="418" y="10" width="440" height="535"/>
+              <path d="M280 49 L346 42 L707 391 L624 414 Z" fill="url(#f2-beam)" filter="url(#soft-blur)"/>
+              <ellipse cx="675" cy="241" rx="95" ry="136" fill="url(#f2-spot)" clip-path="url(#f2-face)"/>
+              <g fill="#ffe2a5" opacity="0.72">
+                <circle cx="422" cy="128" r="1.8"/><circle cx="468" cy="171" r="1.2"/><circle cx="506" cy="136" r="2.1"/><circle cx="535" cy="198" r="1.5"/><circle cx="579" cy="236" r="1.1"/><circle cx="611" cy="289" r="1.8"/><circle cx="651" cy="324" r="1.3"/><circle cx="705" cy="207" r="1.5"/><circle cx="389" cy="251" r="1.3"/><circle cx="748" cy="313" r="1.8"/><circle cx="558" cy="351" r="1.1"/><circle cx="480" cy="306" r="1.5"/>
+              </g>
+              <path d="M0 476 C124 448 230 481 346 458C482 432 587 468 698 449C807 430 870 454 960 438V540H0Z" fill="#0d0b09"/>
+              <text class="hud-time" x="30" y="39">13:00 · 敦煌</text>
+              <text class="hud-source" x="744" y="38">SUN 48.7°</text>
+              <text class="hud-aperture" x="267" y="51">孔 A / 正午</text>
+              <div class="timeline"><div class="played" style="width:50%"></div><i class="knob" style="left:50%"></i></div>
+            </svg>
+          </div>
+          <div class="frame-label"><strong>02 · 日光展开</strong><span>frame-02 · 00:20–01:05</span></div>
+          <p class="note"><b>先动：</b>菩萨面部光斑先从额心滑到鼻梁与嘴角，尘粒随后在体积光中变亮。镜头只极慢靠近。</p>
+          <span class="seam">同一光轴</span>
+        </article>
+
+        <article class="cell" id="frame-03">
+          <div class="visual">
+            <svg viewBox="0 0 960 540" role="img" aria-label="黄昏回望构图草图">
+              <defs>
+                <linearGradient id="f3-bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#131821"/><stop offset="0.55" stop-color="#30231c"/><stop offset="1" stop-color="#473126"/></linearGradient>
+                <linearGradient id="f3-sun" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#d9774d" stop-opacity="0.05"/><stop offset="0.6" stop-color="#e3a16e" stop-opacity="0.5"/><stop offset="1" stop-color="#6b8393" stop-opacity="0.04"/></linearGradient>
+                <linearGradient id="f3-moon" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#a8c6ee" stop-opacity="0"/><stop offset="0.55" stop-color="#a8c6ee" stop-opacity="0.28"/><stop offset="1" stop-color="#a8c6ee" stop-opacity="0.02"/></linearGradient>
+                <clipPath id="f3-face"><use href="#cave328-bodhisattva" x="421" y="18" width="435" height="528"/></clipPath>
+              </defs>
+              <rect width="960" height="540" fill="url(#f3-bg)"/>
+              <path d="M0 0H960V82C819 71 693 97 541 76C379 53 213 91 0 67Z" fill="#090b0e"/>
+              <path d="M0 101 C165 123 273 78 405 111C554 148 730 81 960 120V0H0Z" fill="#29323a" opacity="0.68"/>
+              <path d="M0 178 C180 153 287 203 430 171C588 136 739 198 960 159V540H0Z" fill="#24231f"/>
+              <path d="M0 246 C174 216 269 254 408 231C583 201 720 259 960 216V348C728 384 552 340 360 379C194 412 92 367 0 398Z" fill="#554331" opacity="0.35"/>
+              <path d="M0 261 C155 242 239 279 373 257C537 230 694 283 960 245" fill="none" stroke="#46665d" stroke-width="22" opacity="0.29"/>
+              <path d="M0 308 C169 282 279 322 422 297C585 268 747 330 960 289" fill="none" stroke="#365a7b" stroke-width="15" opacity="0.33"/>
+              <use href="#cave328-bodhisattva" x="421" y="18" width="435" height="528"/>
+              <path d="M579 47 L639 52 L734 344 L677 358 Z" fill="url(#f3-sun)" filter="url(#soft-blur)"/>
+              <path d="M246 54 L302 47 L651 381 L585 402 Z" fill="url(#f3-sun)" filter="url(#soft-blur)"/>
+              <ellipse cx="710" cy="238" rx="70" ry="118" fill="#d88b5b" opacity="0.28" clip-path="url(#f3-face)"/>
+              <g fill="#aec9e8" opacity="0.42">
+                <circle cx="359" cy="143" r="1.3"/><circle cx="409" cy="189" r="1.7"/><circle cx="454" cy="150" r="1.1"/><circle cx="491" cy="229" r="1.5"/><circle cx="534" cy="272" r="1.2"/><circle cx="583" cy="318" r="1.7"/><circle cx="628" cy="350" r="1.1"/><circle cx="342" cy="305" r="1.4"/>
+              </g>
+              <g fill="#e3a16e" opacity="0.48">
+                <circle cx="653" cy="142" r="1.4"/><circle cx="691" cy="194" r="1.1"/><circle cx="725" cy="248" r="1.7"/><circle cx="756" cy="297" r="1.2"/>
+              </g>
+              <path d="M0 477 C127 448 228 480 345 458C480 432 586 469 697 449C807 430 871 455 960 438V540H0Z" fill="#0b0c0d"/>
+              <text class="hud-time" x="30" y="39">19:40 · 敦煌</text>
+              <text class="hud-source" x="706" y="38">SUN −4° / 暮色</text>
+              <text class="hud-aperture" x="225" y="51">柔光 / 暮色</text>
+              <div class="timeline"><div class="played" style="width:75%"></div><i class="knob" style="left:75%"></i></div>
+            </svg>
+          </div>
+          <div class="frame-label"><strong>03 · 斜阳转暖</strong><span>frame-03 · 01:05–01:40</span></div>
+          <p class="note"><b>先动：</b>铜色光从面颊退向耳部，随后暖色余光才出现。镜头轻微拉回，让暖色光线交接不显突兀。</p>
+          <span class="seam">暖冷交叉</span>
+        </article>
+
+        <article class="cell" id="frame-04">
+          <div class="visual">
+            <svg viewBox="0 0 960 540" role="img" aria-label="暮色停留构图草图">
+              <defs>
+                <linearGradient id="f4-bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#090e15"/><stop offset="0.58" stop-color="#17232a"/><stop offset="1" stop-color="#1d292e"/></linearGradient>
+                <linearGradient id="f4-beam" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#bed8f4" stop-opacity="0"/><stop offset="0.48" stop-color="#b7d5f6" stop-opacity="0.5"/><stop offset="1" stop-color="#6f91b1" stop-opacity="0.04"/></linearGradient>
+                <radialGradient id="f4-spot"><stop stop-color="#c6ddf6" stop-opacity="0.76"/><stop offset="0.58" stop-color="#7fa0c4" stop-opacity="0.25"/><stop offset="1" stop-color="#3c586f" stop-opacity="0"/></radialGradient>
+                <clipPath id="f4-face"><use href="#cave328-bodhisattva" x="425" y="20" width="430" height="520"/></clipPath>
+              </defs>
+              <rect width="960" height="540" fill="url(#f4-bg)"/>
+              <path d="M0 0H960V83C812 72 677 98 522 78C365 57 212 91 0 66Z" fill="#06080b"/>
+              <path d="M0 103 C151 121 266 83 394 114C548 151 721 87 960 121V0H0Z" fill="#23333a" opacity="0.65"/>
+              <path d="M0 179 C180 153 271 204 424 171C586 136 744 200 960 159V540H0Z" fill="#1c2426"/>
+              <path d="M0 247 C177 216 272 257 411 233C585 204 723 261 960 217V350C727 386 551 341 356 381C188 414 89 368 0 399Z" fill="#3f4036" opacity="0.34"/>
+              <path d="M0 263 C155 242 241 280 375 258C539 231 696 285 960 246" fill="none" stroke="#405e58" stroke-width="22" opacity="0.3"/>
+              <path d="M0 310 C168 284 280 324 423 298C587 269 749 332 960 290" fill="none" stroke="#314e6c" stroke-width="15" opacity="0.4"/>
+              <use href="#cave328-bodhisattva" x="425" y="20" width="430" height="520"/>
+              <path d="M252 51 L314 47 L666 383 L601 401 Z" fill="url(#f4-beam)" filter="url(#soft-blur)"/>
+              <ellipse cx="679" cy="244" rx="82" ry="123" fill="url(#f4-spot)" clip-path="url(#f4-face)"/>
+              <g fill="#c5ddf4" opacity="0.68">
+                <circle cx="366" cy="132" r="1.6"/><circle cx="417" cy="181" r="1.2"/><circle cx="462" cy="146" r="2"/><circle cx="500" cy="216" r="1.3"/><circle cx="543" cy="262" r="1.7"/><circle cx="588" cy="310" r="1.1"/><circle cx="632" cy="344" r="1.5"/><circle cx="347" cy="287" r="1.4"/><circle cx="682" cy="202" r="1.2"/><circle cx="723" cy="303" r="1.6"/>
+              </g>
+              <path d="M0 477 C125 448 226 480 344 458C481 432 584 468 696 449C808 430 870 455 960 438V540H0Z" fill="#080b0e"/>
+              <text class="hud-time" x="30" y="39">01:20 · 敦煌</text>
+              <text class="hud-source" x="739" y="38">SUN 3.2°</text>
+              <text class="hud-aperture" x="233" y="51">柔光 / 暮色</text>
+              <div class="timeline"><div class="played" style="width:92%"></div><i class="knob" style="left:92%"></i></div>
+            </svg>
+          </div>
+          <div class="frame-label"><strong>04 · 暮色停留</strong><span>frame-04 · 01:40–02:00</span></div>
+          <p class="note"><b>先动：</b>冷月束先扫过菩萨面部，尘粒随后形成细小星尘；最后 20% 镜头拉回并回到黎明前青黑。</p>
+          <span class="seam">无缝回环</span>
+        </article>
+
+        <article class="cell" id="seam-map">
+          <div class="seam-map">
+            <p class="seam-title">ONE CONTINUOUS SHOT / 单一连续镜头</p>
+            <div class="strip">
+              <div class="node"><span class="dot"></span><span>07:30–08:40</span></div>
+              <div class="node"><span class="dot"></span><span>08:40–14:00</span></div>
+              <div class="node"><span class="dot"></span><span>14:00–17:20</span></div>
+              <div class="node"><span class="dot"></span><span>17:20–18:30</span></div>
+            </div>
+            <p class="seam-note">没有剪切点。段落只改变真实时间、光源方向和色温；洞窟几何、镜头轴线与首尾状态保持连续。</p>
+          </div>
+          <div class="frame-label"><strong>SEAM MAP</strong><span>continuity · loop</span></div>
+        </article>
+
+        <article class="cell" id="tokens">
+          <div class="tokens">
+            <div>
+              <p class="token-title">Palette</p>
+              <div class="swatches">
+                <div class="swatch" style="background:#100d09">INK</div>
+                <div class="swatch" style="background:#9a744c">SAND</div>
+                <div class="swatch" style="background:#c7a06c">LIGHT</div>
+                <div class="swatch" style="background:#355878">LAPIS</div>
+                <div class="swatch" style="background:#4d6b5d">GREEN</div>
+                <div class="swatch" style="background:#a45a3c">CINNABAR</div>
+              </div>
+            </div>
+            <div>
+              <p class="token-title">Type Roles</p>
+              <div class="type-sample">千年静止<small>SYSTEM UI / 500 / TRACKED</small></div>
+            </div>
+            <div class="ban-list">
+              <div><strong>不切片</strong>四帧共享一条真实光轴。</div>
+              <div><strong>不造月</strong>月亮不可见时不强打冷光。</div>
+              <div><strong>不炫技</strong>镜头漂移始终小于画面 1%。</div>
+            </div>
+          </div>
+          <div class="frame-label"><strong>TOKENS</strong><span>frame.md · v1</span></div>
+        </article>
+      </section>
+
+      <footer>
+        <span>Locked geometry intent: cave aperture A · face focus B · continuous camera axis</span>
+        <span>Sketch only / no motion / Three.js build follows after layout approval</span>
+      </footer>
+    </main>
+  </body>
+</html>
